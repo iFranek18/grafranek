@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gra Pytaniowa</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-image: url("https://images.unsplash.com/photo-1502082553048-f009c37129b9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: #fff;
+            transition: transform 1s ease;
+        }
+
+        body.rotated {
+            transform: rotate(180deg);
+        }
+
+        h1 {
+            text-align: center;
+            margin: 30px 0;
+            text-shadow: 1px 1px 4px #000;
+        }
+
+        .question {
+            font-size: 24px;
+            margin-top: 30px;
+            min-height: 100px;
+            text-align: center;
+            text-shadow: 1px 1px 3px #000;
+        }
+
+        .button {
+            display: inline-block;
+            margin: 15px;
+            padding: 12px 24px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        .button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .input-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .input-container input {
+            padding: 12px;
+            font-size: 16px;
+            margin: 5px;
+            border-radius: 8px;
+            border: none;
+            width: 200px;
+        }
+
+        .flip-button-container {
+            margin-top: 40px;
+        }
+
+        .flip-button {
+            position: relative;
+            width: 200px;
+            height: 60px;
+            background-color: transparent;
+            border: none;
+            perspective: 1000px;
+        }
+
+        .flip-button .inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flip-button.flipped .inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-button .front, .flip-button .back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border-radius: 10px;
+        }
+
+        .flip-button .front {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .flip-button .back {
+            background-color: #4CAF50;
+            color: white;
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body>
+    <h1>Gra Pytaniowa</h1>
+
+    <div class="input-container">
+        <input type="text" id="player1" placeholder="Imię gracza 1">
+        <input type="text" id="player2" placeholder="Imię gracza 2">
+        <button class="button" onclick="startGame()">Rozpocznij grę</button>
+    </div>
+
+    <div class="question" id="question">Wprowadź imiona graczy, aby rozpocząć!</div>
+
+    <div>
+        <button class="button" onclick="generateQuestion()" id="questionButton" style="display: none;">Losuj pytanie</button>
+        <button class="button" onclick="skipQuestion()" id="skipButton" style="display: none;">Pomiń pytanie</button>
+    </div>
+
+    <div class="flip-button-container">
+        <button class="flip-button" id="flipButton">
+            <div class="inner">
+                <div class="front">OD FRANKA</div>
+                <div class="back">I LOVE PATI</div>
+            </div>
+        </button>
+    </div>
+
+    <script>
+        const allQuestions = [
+            "Co byś zrobił/a, gdybyś mógł/mogła być niewidzialny/a przez 24h?",
+            "Gdybyś mógł/mogła jeść tylko jedno jedzenie do końca życia?",
+            "Co byś zrobił/a, gdybyś wygrał/a 10 milionów złotych?",
+            "Gdybyś mógł/mogła przenieść się w czasie na jeden dzień?",
+            "Co byś zrobił/a, gdybyś był/a kimś innym na jeden dzień?",
+            "Co byś zrobił/a, gdybyś zakochał/a się w kimś niedostępnym?",
+            "Gdyby ktoś powiedział Ci, że jesteś zbyt emocjonalny/a?",
+            "Co byś zrobił/a, gdybyś miał/a powiedzieć komuś coś odważnego dziś wieczorem?",
+            "Co byś zrobił/a, gdybyś miał/a szansę na jeden idealny dzień z kimś bliskim?",
+            "Co byś zrobił/a, gdyby ktoś zaprosił Cię na spacer o 2 w nocy tylko po to, żeby pogadać?",
+            "Co byś zrobił/a, gdyby ktoś zapytał Cię teraz, czy chcesz się przytulić?",
+            "Co byś zrobił/a, gdybyście zostali tu sami na całą noc?",
+            "Co byś zrobił/a, gdyby ktoś powiedział Ci prosto w oczy, że coś w Tobie bardzo przyciąga?",
+            "Co byś zrobił/a, gdybyś usłyszał/a coś, na co czekałeś/aś od dawna?",
+            "Co byś zrobił/a, gdybyś poczuł/a, że ktoś naprawdę Cię rozumie?",
+            "Gdybyś mógł/mogła spędzić dzień z dowolną osobą, kto by to był?",
+            "Co byś zrobił/a, gdybyś miał/a możliwość spotkać swojego idola?",
+            "Gdybyś mógł/mogła podróżować w czasie, do jakiej epoki byś się udał/a?",
+            "Jak byś spędził/a jeden dzień bez technologii?",
+            "Co byś zrobił/a, gdybyś miał/a wybrać jedną rzecz w swoim życiu do zmiany?",
+            "Co byś zrobił/a, gdybyś dostał/a możliwość spełnienia jednego marzenia?",
+            "Gdybyś miał/a tylko 24 godziny życia, co byś zrobił/a?",
+            "Co byś zrobił/a, gdybyś miał/a wybrać jedną osobę, z którą chcesz spędzić resztę życia?",
+            "Gdybyś mógł/mogła zrobić coś, czego nigdy nie miał/aś odwagi, co by to było?",
+            "Co byś zrobił/a, gdybyś miał/a moc sprawiania, że ludzie będą szczęśliwi?",
+            "Gdybyś był/a w stanie zmienić coś w historii, co by to było?",
+            "Co byś zrobił/a, gdybyś miał/a moc przewidywania przyszłości?",
+            "Gdybyś mógł/mogła zostać mistrzem w czymkolwiek, co byś wybrał/a?"
+        ];
+
+        let availableQuestions = [...allQuestions];
+        let currentPlayer = 1;
+        let player1Name = '';
+        let player2Name = '';
+        let player1Skipped = false;
+        let player2Skipped = false;
+        let rotationState = false;
+
+        function startGame() {
+            player1Name = document.getElementById('player1').value.trim();
+            player2Name = document.getElementById('player2').value.trim();
+
+            if (player1Name && player2Name) {
+                document.querySelector('.input-container').style.display = 'none';
+                document.getElementById('questionButton').style.display = 'inline-block';
+                document.getElementById('skipButton').style.display = 'inline-block';
+                document.getElementById('question').innerText = `${player1Name}, przygotuj się na pierwsze pytanie!`;
+            } else {
+                alert('Podaj imiona obu graczy!');
+            }
+        }
+
+        function getCurrentPlayerName() {
+            return currentPlayer === 1 ? player1Name : player2Name;
+        }
+
+        function generateQuestion() {
+            // Zmiana gracza
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+
+            // Obrót strony
+            rotationState = !rotationState;
+            document.body.classList.toggle('rotated', rotationState);
+
+            // Wylosuj pytanie
+            if (availableQuestions.length === 0) {
+                availableQuestions = [...allQuestions];
+            }
+
+            const index = Math.floor(Math.random() * availableQuestions.length);
+            const question = availableQuestions.splice(index, 1)[0];
+
+            // Wyświetl pytanie po krótkim opóźnieniu (aby rotacja wyglądała lepiej)
+            setTimeout(() => {
+                document.getElementById('question').innerText = `${getCurrentPlayerName()}, ${question}`;
+            }, 500);
+        }
+
+        function skipQuestion() {
+            if (currentPlayer === 1) {
+                player2Skipped = true;
+            } else {
+                player1Skipped = true;
+            }
+            document.getElementById('skipButton').style.display = 'none';
+            generateQuestion();
+        }
+
+        document.getElementById('flipButton').addEventListener('click', function () {
+            this.classList.toggle('flipped');
+        });
+    </script>
+</body>
+</html>
