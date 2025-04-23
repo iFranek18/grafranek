@@ -59,7 +59,7 @@
             margin-top: 20px;
         }
 
-        .input-container input {
+        .input-container input, .input-container select {
             padding: 12px;
             font-size: 16px;
             margin: 5px;
@@ -70,6 +70,7 @@
 
         .flip-button-container {
             margin-top: 40px;
+            text-align: center;
         }
 
         .flip-button {
@@ -122,16 +123,16 @@
     <h1>Gra Pytaniowa</h1>
 
     <div class="input-container">
-        <select id="playerCount" onchange="generatePlayerInputs()">
+        <select id="playerCount">
             <option value="2">2 graczy</option>
             <option value="3">3 graczy</option>
             <option value="4">4 graczy</option>
-        </select>
-        <div id="playerInputs"></div>
+        </select><br>
+        <div id="playersInputs"></div>
         <button class="button" onclick="startGame()">Rozpocznij grę</button>
     </div>
 
-    <div class="question" id="question">Wprowadź imiona graczy, aby rozpocząć!</div>
+    <div class="question" id="question">Wprowadź dane i rozpocznij grę!</div>
 
     <div>
         <button class="button" onclick="generateQuestion()" id="questionButton" style="display: none;">Losuj pytanie</button>
@@ -155,7 +156,7 @@
             "Gdybyś mógł/mogła przenieść się w czasie na jeden dzień?",
             "Co byś zrobił/a, gdybyś był/a kimś innym na jeden dzień?",
             "Co byś zrobił/a, gdybyś zakochał/a się w kimś niedostępnym?",
-            "Co byś zrobił/a, gdybyś mógł/a powiedzieć coś na co nigdy nie miałeś/aś odwagi?",
+            "Gdyby ktoś powiedział Ci, że jesteś zbyt emocjonalny/a?",
             "Co byś zrobił/a, gdybyś miał/a powiedzieć komuś coś odważnego dziś wieczorem?",
             "Co byś zrobił/a, gdybyś miał/a szansę na jeden idealny dzień z kimś bliskim?",
             "Co byś zrobił/a, gdyby ktoś zaprosił Cię na spacer o 2 w nocy tylko po to, żeby pogadać?",
@@ -179,86 +180,81 @@
             "Gdybyś mógł/mogła zostać mistrzem w czymkolwiek, co byś wybrał/a?"
         ];
 
-        let players = [];
-        let playerQuestionsMap = {};
+        let playerNames = [];
+        let playerQuestions = {};
+        let skipped = {};
         let currentPlayerIndex = -1;
+        let availableQuestions = [...allQuestions];
+        let rotation = false;
 
-        function generatePlayerInputs() {
-            const playerCount = parseInt(document.getElementById('playerCount').value);
-            const playerInputsDiv = document.getElementById('playerInputs');
-            playerInputsDiv.innerHTML = '';
-
-            for (let i = 1; i <= playerCount; i++) {
+        document.getElementById('playerCount').addEventListener('change', function () {
+            const count = parseInt(this.value);
+            const container = document.getElementById('playersInputs');
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
                 const input = document.createElement('input');
-                input.type = 'text';
-                input.placeholder = `Imię gracza ${i}`;
                 input.id = `player${i}`;
-                playerInputsDiv.appendChild(input);
+                input.placeholder = `Imię gracza ${i}`;
+                container.appendChild(input);
             }
-        }
+        });
+
+        document.getElementById('playerCount').dispatchEvent(new Event('change'));
 
         function startGame() {
-            players = [];
-            playerQuestionsMap = {};
-            currentPlayerIndex = -1;
-
-            const playerCount = parseInt(document.getElementById('playerCount').value);
-            for (let i = 1; i <= playerCount; i++) {
+            const count = parseInt(document.getElementById('playerCount').value);
+            playerNames = [];
+            for (let i = 1; i <= count; i++) {
                 const name = document.getElementById(`player${i}`).value.trim();
-                if (!name) {
-                    alert('Wprowadź imiona wszystkich graczy!');
-                    return;
-                }
-                players.push(name);
-                playerQuestionsMap[name] = new Set();
+                if (!name) return alert("Wpisz wszystkie imiona!");
+                playerNames.push(name);
+                playerQuestions[name] = [...allQuestions];
+                skipped[name] = false;
             }
 
             document.querySelector('.input-container').style.display = 'none';
             document.getElementById('questionButton').style.display = 'inline-block';
             document.getElementById('skipButton').style.display = 'inline-block';
+
             generateQuestion();
+        }
+
+        function getNextPlayerIndex() {
+            return (currentPlayerIndex + 1) % playerNames.length;
         }
 
         function generateQuestion() {
-            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-            const currentPlayer = players[currentPlayerIndex];
+            currentPlayerIndex = getNextPlayerIndex();
+            const currentPlayer = playerNames[currentPlayerIndex];
 
-            const rotate = shouldRotate(currentPlayerIndex, players.length);
-            document.body.classList.toggle('rotated', rotate);
+            // Rotacja planszy
+            rotation = !rotation;
+            document.body.classList.toggle('rotated', rotation);
 
-            const used = playerQuestionsMap[currentPlayer];
-            const unusedQuestions = allQuestions.filter(q => !used.has(q));
-
-            if (unusedQuestions.length === 0) {
-                document.getElementById('question').innerText = `${currentPlayer}, nie masz już nowych pytań!`;
+            const questions = playerQuestions[currentPlayer];
+            if (questions.length === 0) {
+                document.getElementById('question').innerText = `${currentPlayer} - brak nowych pytań!`;
                 return;
             }
 
-            const index = Math.floor(Math.random() * unusedQuestions.length);
-            const question = unusedQuestions[index];
-            playerQuestionsMap[currentPlayer].add(question);
+            const index = Math.floor(Math.random() * questions.length);
+            const question = questions.splice(index, 1)[0];
 
-            setTimeout(() => {
-                document.getElementById('question').innerText = `${currentPlayer}, ${question}`;
-            }, 500);
+            document.getElementById('question').innerText = `${currentPlayer}, ${question}`;
+            document.getElementById('skipButton').style.display = skipped[currentPlayer] ? 'none' : 'inline-block';
         }
 
         function skipQuestion() {
-            generateQuestion();
-        }
-
-        function shouldRotate(index, total) {
-            if (total === 2) return index === 1;
-            if (total === 3) return index === 2;
-            if (total === 4) return index >= 2;
-            return false;
+            const currentPlayer = playerNames[currentPlayerIndex];
+            if (!skipped[currentPlayer]) {
+                skipped[currentPlayer] = true;
+                generateQuestion();
+            }
         }
 
         document.getElementById('flipButton').addEventListener('click', function () {
             this.classList.toggle('flipped');
         });
-
-        generatePlayerInputs();
     </script>
 </body>
 </html>
