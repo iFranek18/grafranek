@@ -74,7 +74,7 @@
 
         .flip-button {
             position: relative;
-            width: 200px;
+            width: 250px;
             height: 60px;
             background-color: transparent;
             border: none;
@@ -122,8 +122,12 @@
     <h1>Gra Pytaniowa</h1>
 
     <div class="input-container">
-        <input type="text" id="player1" placeholder="Imię gracza 1">
-        <input type="text" id="player2" placeholder="Imię gracza 2">
+        <select id="playerCount" onchange="generatePlayerInputs()">
+            <option value="2">2 graczy</option>
+            <option value="3">3 graczy</option>
+            <option value="4">4 graczy</option>
+        </select>
+        <div id="playerInputs"></div>
         <button class="button" onclick="startGame()">Rozpocznij grę</button>
     </div>
 
@@ -138,7 +142,7 @@
         <button class="flip-button" id="flipButton">
             <div class="inner">
                 <div class="front">OD FRANKA</div>
-                <div class="back">I LOVE PATI</div>
+                <div class="back">DLA MIŁYCH CHWIL Z PATI</div>
             </div>
         </button>
     </div>
@@ -151,7 +155,7 @@
             "Gdybyś mógł/mogła przenieść się w czasie na jeden dzień?",
             "Co byś zrobił/a, gdybyś był/a kimś innym na jeden dzień?",
             "Co byś zrobił/a, gdybyś zakochał/a się w kimś niedostępnym?",
-            "Gdyby ktoś powiedział Ci, że jesteś zbyt emocjonalny/a?",
+            "Co byś zrobił/a, gdybyś mógł/a powiedzieć coś na co nigdy nie miałeś/aś odwagi?",
             "Co byś zrobił/a, gdybyś miał/a powiedzieć komuś coś odważnego dziś wieczorem?",
             "Co byś zrobił/a, gdybyś miał/a szansę na jeden idealny dzień z kimś bliskim?",
             "Co byś zrobił/a, gdyby ktoś zaprosił Cię na spacer o 2 w nocy tylko po to, żeby pogadać?",
@@ -175,67 +179,86 @@
             "Gdybyś mógł/mogła zostać mistrzem w czymkolwiek, co byś wybrał/a?"
         ];
 
-        let availableQuestions = [...allQuestions];
-        let currentPlayer = 1;
-        let player1Name = '';
-        let player2Name = '';
-        let player1Skipped = false;
-        let player2Skipped = false;
-        let rotationState = false;
+        let players = [];
+        let playerQuestionsMap = {};
+        let currentPlayerIndex = -1;
 
-        function startGame() {
-            player1Name = document.getElementById('player1').value.trim();
-            player2Name = document.getElementById('player2').value.trim();
+        function generatePlayerInputs() {
+            const playerCount = parseInt(document.getElementById('playerCount').value);
+            const playerInputsDiv = document.getElementById('playerInputs');
+            playerInputsDiv.innerHTML = '';
 
-            if (player1Name && player2Name) {
-                document.querySelector('.input-container').style.display = 'none';
-                document.getElementById('questionButton').style.display = 'inline-block';
-                document.getElementById('skipButton').style.display = 'inline-block';
-                document.getElementById('question').innerText = `${player1Name}, przygotuj się na pierwsze pytanie!`;
-            } else {
-                alert('Podaj imiona obu graczy!');
+            for (let i = 1; i <= playerCount; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `Imię gracza ${i}`;
+                input.id = `player${i}`;
+                playerInputsDiv.appendChild(input);
             }
         }
 
-        function getCurrentPlayerName() {
-            return currentPlayer === 1 ? player1Name : player2Name;
+        function startGame() {
+            players = [];
+            playerQuestionsMap = {};
+            currentPlayerIndex = -1;
+
+            const playerCount = parseInt(document.getElementById('playerCount').value);
+            for (let i = 1; i <= playerCount; i++) {
+                const name = document.getElementById(`player${i}`).value.trim();
+                if (!name) {
+                    alert('Wprowadź imiona wszystkich graczy!');
+                    return;
+                }
+                players.push(name);
+                playerQuestionsMap[name] = new Set();
+            }
+
+            document.querySelector('.input-container').style.display = 'none';
+            document.getElementById('questionButton').style.display = 'inline-block';
+            document.getElementById('skipButton').style.display = 'inline-block';
+            generateQuestion();
         }
 
         function generateQuestion() {
-            // Zmiana gracza
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            const currentPlayer = players[currentPlayerIndex];
 
-            // Obrót strony
-            rotationState = !rotationState;
-            document.body.classList.toggle('rotated', rotationState);
+            const rotate = shouldRotate(currentPlayerIndex, players.length);
+            document.body.classList.toggle('rotated', rotate);
 
-            // Wylosuj pytanie
-            if (availableQuestions.length === 0) {
-                availableQuestions = [...allQuestions];
+            const used = playerQuestionsMap[currentPlayer];
+            const unusedQuestions = allQuestions.filter(q => !used.has(q));
+
+            if (unusedQuestions.length === 0) {
+                document.getElementById('question').innerText = `${currentPlayer}, nie masz już nowych pytań!`;
+                return;
             }
 
-            const index = Math.floor(Math.random() * availableQuestions.length);
-            const question = availableQuestions.splice(index, 1)[0];
+            const index = Math.floor(Math.random() * unusedQuestions.length);
+            const question = unusedQuestions[index];
+            playerQuestionsMap[currentPlayer].add(question);
 
-            // Wyświetl pytanie po krótkim opóźnieniu (aby rotacja wyglądała lepiej)
             setTimeout(() => {
-                document.getElementById('question').innerText = `${getCurrentPlayerName()}, ${question}`;
+                document.getElementById('question').innerText = `${currentPlayer}, ${question}`;
             }, 500);
         }
 
         function skipQuestion() {
-            if (currentPlayer === 1) {
-                player2Skipped = true;
-            } else {
-                player1Skipped = true;
-            }
-            document.getElementById('skipButton').style.display = 'none';
             generateQuestion();
+        }
+
+        function shouldRotate(index, total) {
+            if (total === 2) return index === 1;
+            if (total === 3) return index === 2;
+            if (total === 4) return index >= 2;
+            return false;
         }
 
         document.getElementById('flipButton').addEventListener('click', function () {
             this.classList.toggle('flipped');
         });
+
+        generatePlayerInputs();
     </script>
 </body>
 </html>
